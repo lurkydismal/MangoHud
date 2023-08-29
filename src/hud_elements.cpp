@@ -176,12 +176,12 @@ static int popen_to_str(char **buffer, char *str, ...)
 
 	tmp[strlen(tmp) - 1] = '\0';
 	ret = asprintf(buffer, "%s", tmp);
-	free(cmd_str);
 
     if ( !ret ) {
         goto error;
     }
 
+	free(cmd_str);
 	return pclose(pipe_descr);
 
 error:
@@ -292,18 +292,20 @@ void HudElements::gpu_stats(){
             int ret_gpwr = popen_to_str( &gpwr, const_cast< char* >( nvidia_cmd_args.c_str() ) );
 
             if (!ret_gpwr) {
-                ImguiNextColumnOrNewRow();
-                // char str[16];
-                // snprintf(str, sizeof(str), "%.1f", gpu_info.powerUsage); // gpu_info.powerUsage
-                if (strlen(gpwr) > 4)
-                    right_aligned_text(text_color, HUDElements.ralign_width, "%.0f", atof(gpwr));
-                else
-                    right_aligned_text(text_color, HUDElements.ralign_width, "%.1f", atof(gpwr));
-                ImGui::SameLine(0, 1.0f);
-                ImGui::PushFont(HUDElements.sw_stats->font1);
-                HUDElements.TextColored(HUDElements.colors.text, "W");
-                ImGui::PopFont();
+                gpu_info.powerUsage = atof( gpwr );
             }
+
+            ImguiNextColumnOrNewRow();
+            char str[16];
+            snprintf(str, sizeof(str), "%.1f", gpu_info.powerUsage);
+            if (strlen(str) > 4)
+                right_aligned_text(text_color, HUDElements.ralign_width, "%.0f", gpu_info.powerUsage);
+            else
+                right_aligned_text(text_color, HUDElements.ralign_width, "%.1f", gpu_info.powerUsage);
+            ImGui::SameLine(0, 1.0f);
+            ImGui::PushFont(HUDElements.sw_stats->font1);
+            HUDElements.TextColored(HUDElements.colors.text, "W");
+            ImGui::PopFont();
         }
 
         if (HUDElements.params->enabled[OVERLAY_PARAM_ENABLED_gpu_voltage]) {
