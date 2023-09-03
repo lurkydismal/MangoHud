@@ -126,6 +126,43 @@ static void ImGuiTableSetColumnIndex(int column)
     ImGui::TableSetColumnIndex(std::max(0, std::min(column, ImGui::TableGetColumnCount() - 1)));
 }
 
+static int popen_to_str(char **buffer, char *str, ...)
+{
+    int ret;
+	char tmp[80] = "unknown";
+	char *cmd_str = NULL;
+	FILE *pipe_descr = NULL;
+	va_list aptr;
+
+	va_start(aptr, str);
+	ret = vasprintf(&cmd_str, str, aptr);
+	va_end(aptr);
+
+    if ( !ret ) {
+        goto error;
+    }
+
+	if((pipe_descr = popen(cmd_str, "r")) == NULL)
+		goto error;
+
+	if(fgets(tmp, 80, pipe_descr) == NULL)
+		goto error;
+
+	tmp[strlen(tmp) - 1] = '\0';
+	ret = asprintf(buffer, "%s", tmp);
+
+    if ( !ret ) {
+        goto error;
+    }
+
+	free(cmd_str);
+	return pclose(pipe_descr);
+
+error:
+	free(cmd_str);
+	return (pipe_descr == NULL) ? 1 : 2 + pclose(pipe_descr);
+}
+
 void HudElements::time(){
     if (HUDElements.params->enabled[OVERLAY_PARAM_ENABLED_time]){
         ImGui::TableNextColumn();
@@ -190,6 +227,14 @@ void HudElements::gpu_stats(){
             ImGui::PopFont();
         }
         if (HUDElements.params->enabled[OVERLAY_PARAM_ENABLED_gpu_power]) {
+            char* gpwr;
+            std::string nvidia_cmd_args = "nvidia-smi --format=csv,noheader,nounits --id=0 --query-gpu=power.draw";
+            int ret_gpwr = popen_to_str( &gpwr, const_cast< char* >( nvidia_cmd_args.c_str() ) );
+
+            if (!ret_gpwr) {
+                gpu_info.powerUsage = atof( gpwr );
+            }
+
             ImguiNextColumnOrNewRow();
 #ifdef MANGOAPP
             right_aligned_text(text_color, HUDElements.ralign_width, "%.1f", gpu_info.powerUsage);
@@ -200,6 +245,10 @@ void HudElements::gpu_stats(){
             ImGui::PushFont(HUDElements.sw_stats->font1);
             ImGui::Text("W");
             ImGui::PopFont();
+
+            if (!ret_gpwr) {
+                free( gpwr );
+            }
         }
     }
 }
