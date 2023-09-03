@@ -227,12 +227,19 @@ void HudElements::gpu_stats(){
             ImGui::PopFont();
         }
         if (HUDElements.params->enabled[OVERLAY_PARAM_ENABLED_gpu_power]) {
+            static uint8_t delay = UINT8_MAX;
+            int ret_gpwr = 1;
             char* gpwr;
-            std::string nvidia_cmd_args = "nvidia-smi --format=csv,noheader,nounits --id=0 --query-gpu=power.draw";
-            int ret_gpwr = popen_to_str( &gpwr, const_cast< char* >( nvidia_cmd_args.c_str() ) );
 
-            if (!ret_gpwr) {
-                gpu_info.powerUsage = atof( gpwr );
+            if ( delay == UINT8_MAX ) {
+                std::string nvidia_cmd_args = "nvidia-smi --format=csv,noheader,nounits --id=0 --query-gpu=power.draw";
+                ret_gpwr = popen_to_str( &gpwr, const_cast< char* >( nvidia_cmd_args.c_str() ) );
+
+                if (!ret_gpwr) {
+                    gpu_info.powerUsage = atof( gpwr );
+                }
+
+                delay = 0;
             }
 
             ImguiNextColumnOrNewRow();
@@ -249,6 +256,8 @@ void HudElements::gpu_stats(){
             if (!ret_gpwr) {
                 free( gpwr );
             }
+
+            delay++;
         }
     }
 }
